@@ -1,0 +1,98 @@
+# =============================================================================
+# REGRESSION MODEL
+# =============================================================================
+
+#packages import
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn import metrics
+
+#data load
+dataset=pd.read_csv(r'Z:\october_2018_Batch\Supervised learning module test\Regression Dataset.csv')
+print(dataset)
+
+#data desc
+dataset.head()
+dataset.describe()
+dataset.info()
+
+#null values check
+dataset.isnull().sum()
+print('no null values in dataset')
+
+#distribution plot
+print(dataset.hist())
+print(dataset.iloc[:,:5].hist())
+print(dataset.iloc[:,5:10].hist())
+print(dataset.iloc[:,10:15].hist())
+print(dataset.iloc[:,15:22].hist())
+
+#outlier detection
+plt.boxplot(dataset[:3])
+
+#scaling
+# Feature Scaling
+from sklearn.preprocessing import StandardScaler
+sc = StandardScaler()
+dataset.iloc[:,6:20] = sc.fit_transform(dataset.iloc[:,6:20])
+dataset.iloc[:,21:22] = sc.fit_transform(dataset.iloc[:,21:22])
+
+#converting test_time float days to int
+l=list(dataset['test_time'])
+d=pd.DataFrame(l,dtype=int)
+dataset['test_time']=d
+
+#correlation 
+print(dataset.corr())
+print(sns.heatmap(dataset.corr()))
+
+#feature removal
+dataset=dataset.drop('subject#',axis=1)
+print(dataset)
+
+#independent and target variables assignment
+x=dataset.drop('total_UPDRS',axis=1)
+y=dataset['total_UPDRS']
+print(x)
+print(y)
+
+#scatter plot
+li=x.columns
+print(sns.pairplot(data=dataset,y_vars=li,x_vars='total_UPDRS'))
+
+# Splitting the dataset into the Training set and Test set
+from sklearn.cross_validation import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.2, random_state = 0)
+
+# building Multiple Linear Regression model to the Training set
+from sklearn.linear_model import LinearRegression
+regressor = LinearRegression()
+reg=regressor.fit(x_train, y_train)
+
+
+#coefficient and intercept values
+print('coefficient values',regressor.coef_)
+print('intercept value',regressor.intercept_)
+
+# Predicting the Test set results
+y_pred = regressor.predict(x_test)
+y_pred=pd.DataFrame(y_pred)
+
+# Building the optimal model using Backward Elimination
+import statsmodels.formula.api as sm
+model = sm.ols(formula='total_UPDRS~test_time',data=dataset)
+fitted = model.fit()
+
+#error values
+print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred))  
+print('Mean Squared Error:', metrics.mean_squared_error(y_test, y_pred))  
+print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred))) 
+print(fitted.summary())
+
+#INFERENCE
+""" From the given dataset, by building the regression model , we can predict the 
+ Clinician's total UPDRS score for each record of the patient which is from 
+ the telemonitoring device for remote symptom progression monitoring """
+
