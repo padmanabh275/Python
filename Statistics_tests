@@ -1,0 +1,771 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+
+
+import numpy as np  
+
+total_tosses = 30
+num_heads = 24
+prob_head = 0.5
+
+#0 is tail. 1 is heads. Generate one experiment
+experiment = np.random.randint(0,2,total_tosses)
+print ("Data of the Experiment:", experiment)
+#Find the number of heads
+print ("Heads in the Experiment:", experiment[experiment==1])  #This will give all the heads in the array
+head_count = experiment[experiment==1].shape[0] #This will get the count of heads in the array
+print ("Number of heads in the experiment:", head_count)
+
+
+
+#Now, the above experiment needs to be repeated 100 times. Let's write a function and put the above code in a loop
+
+
+def coin_toss_experiment(times_to_repeat):
+    head_count = np.empty([times_to_repeat,1], dtype=int)
+    for times in np.arange(times_to_repeat):
+        experiment = np.random.randint(0,2,total_tosses)
+        head_count[times] = experiment[experiment==1].shape[0]    
+    return head_count
+
+head_count = coin_toss_experiment(100)
+
+
+
+head_count[:10] 
+
+print ("Dimensions:", head_count.shape, "\n","Type of object:", type(head_count))
+
+#Let's plot the above distribution
+import matplotlib.pyplot as plt
+get_ipython().run_line_magic('matplotlib', 'inline')
+import seaborn as sns
+sns.set(color_codes = True)
+
+sns.distplot(head_count, kde=False)
+
+#Number of times the experiment returned 24 heads.
+head_count[head_count>=24]
+
+print ("No of times experiment returned 24 heads or more:", head_count[head_count>=24].shape[0])
+print ("% of times with 24 or more heads: ", head_count[head_count>=24].shape[0]/float(head_count.shape[0])*100)
+
+
+# **** Removing `for` loop in the function ****
+
+
+def coin_toss_experiment_2(times_to_repeat):
+
+    head_count = np.empty([times_to_repeat,1], dtype=int)
+    experiment = np.random.randint(0,2,[times_to_repeat,total_tosses])
+    return experiment.sum(axis=1)
+
+
+
+#!/usr/bin/env python
+# coding: utf-8
+
+# ### Problem
+# The number of shoes sold by an e-commerce company during the first three months(12 weeks) of the year were:
+# <br>
+# 23 21 19 24 35 17 18 24 33 27 21 23
+# 
+# Meanwhile, the company developed some dynamic price optimization algorithms and the sales for the next 12 weeks were:
+# 31 28 19 24 32 27 16 41 23 32 29 33
+# Did the dynamic price optimization algorithm deliver superior results? Can it be trusted?
+import numpy as np
+import seaborn as sns
+sns.set(color_codes=True)
+#Load the data
+before_opt = np.array([23, 21, 19, 24, 35, 17, 18, 24, 33, 27, 21, 23])
+after_opt = np.array([31, 28, 19, 24, 32, 27, 16, 41, 23, 32, 29, 33])
+before_opt.mean()
+after_opt.mean()
+observed_difference = after_opt.mean() - before_opt.mean()
+print ("Difference between the means is:", observed_difference)
+# On average, the sales after optimization is more than the sales before optimization. But is the difference legit? Could it be due to chance?
+# **Classical Method** : We could cover this method later on. This entails doing a *t-test* 
+# **Hacker's Method** : Let's see if we can provide a hacker's perspective to this problem, similar to what we did in the previous notebook.
+#Step 1: Create the dataset. Let's give Label 0 to before_opt and Label 1 to after_opt
+#Learn about the following three functions
+shoe_sales = np.array([np.append(np.zeros(before_opt.shape[0]), np.ones(after_opt.shape[0])),
+np.append(before_opt, after_opt)], dtype=int)
+
+print( "Shape:", shoe_sales.shape)
+print ("Data:", "\n", shoe_sales)
+
+shoe_sales = shoe_sales.T
+print ("Shape:",shoe_sales.shape)
+print ("Data:", "\n", shoe_sales)
+
+#This is the approach we are going to take
+#We are going to randomly shuffle the labels. Then compute the mean between the two groups. 
+#Find the % of times when the difference between the means computed is greater than what we observed above
+#If the % of times is less than 5%, we would make the call that the improvements are real
+
+np.random.shuffle(shoe_sales)
+
+shoe_sales
+experiment_label = np.random.randint(0,2,shoe_sales.shape[0])
+
+experiment_label
+
+experiment_data = np.array([experiment_label, shoe_sales[:,1]])
+experiment_data = experiment_data.T
+print (experiment_data)
+
+experiment_diff_mean =  experiment_data[experiment_data[:,0]==1].mean() - experiment_data[experiment_data[:,0]==0].mean()
+experiment_diff_mean
+
+def shuffle_experiment(number_of_times):
+    experiment_diff_mean = np.empty([number_of_times,1])
+    for times in np.arange(number_of_times):
+        experiment_label = np.random.randint(0,2,shoe_sales.shape[0])
+        experiment_data = np.array([experiment_label, shoe_sales[:,1]]).T
+        experiment_diff_mean[times] =  experiment_data[experiment_data[:,0]==1].mean()     - experiment_data[experiment_data[:,0]==0].mean()
+    return experiment_diff_mean    
+
+
+experiment_diff_mean = shuffle_experiment(100)
+
+experiment_diff_mean[:10]
+
+sns.distplot(experiment_diff_mean, kde=False)
+
+#Finding % of times difference of means is greater than observed
+print ("Data: Difference in mean greater than observed:",  experiment_diff_mean[experiment_diff_mean>=observed_difference])
+
+print ("Number of times diff in mean greater than observed:", experiment_diff_mean[experiment_diff_mean>=observed_difference].shape[0])
+print ("% of times diff in mean greater than observed:",experiment_diff_mean[experiment_diff_mean>=observed_difference].shape[0]/float(experiment_diff_mean.shape[0])*100)
+
+
+# #### Exercise: Repeat the above for 100,000 runs and report the results
+
+# # Is the result by chance? 
+
+# ### What is the justification for shuffling the labels? 
+# 
+# >Thought process is this: If price optimization had no real effect, then, the sales before optimization would often give more sales than sales after optimization. By shuffling, we are simulating the situation where that happens -  sales before optimization is greater than sales after optimization. If many such trials provide improvements, then, the price optimization has no effect. In statistical terms, *the observed difference could have occurred by chance*. 
+# 
+# Now, to show that the same difference in mean might lead to a different conclusion, let's try the same experiment with a different dataset. 
+
+before_opt = np.array([230, 210, 190, 240, 350, 170, 180, 240, 330, 270, 210, 230])
+after_opt = np.array([310, 180, 190, 240, 220, 240, 160, 410, 130, 320, 290, 210])
+
+print ("Mean sales before price optimization:", np.mean(before_opt))
+print ("Mean sales after price optimization:", np.mean(after_opt))
+print ("Difference in mean sales:", np.mean(after_opt) - np.mean(before_opt) #Same as above)
+
+shoe_sales = np.array([np.append(np.zeros(before_opt.shape[0]), np.ones(after_opt.shape[0])),
+np.append(before_opt, after_opt)], dtype=int)
+shoe_sales = shoe_sales.T
+
+experiment_diff_mean = shuffle_experiment(100000)
+sns.distplot(experiment_diff_mean, kde=False)
+
+#Finding % of times difference of means is greater than observed
+print ("Number of times diff in mean greater than observed:",  experiment_diff_mean[experiment_diff_mean>=observed_difference].shape[0])
+print ("% of times diff in mean greater than observed:",    experiment_diff_mean[experiment_diff_mean>=observed_difference].shape[0]/float(experiment_diff_mean.shape[0])*100)
+
+
+# ### Did the conclusion change now? 
+
+# # Effect Size
+# 
+# > **Because you can't argue with all the fools in the world. It's easier to let them have their way, then trick them when they're not paying attention**  - Christopher Paolini
+# 
+# In the first case, how much did the price optimization increase the sales on average?
+
+before_opt = np.array([23, 21, 19, 24, 35, 17, 18, 24, 33, 27, 21, 23])
+after_opt = np.array([31, 28, 19, 24, 32, 27, 16, 41, 23, 32, 29, 33])
+
+print ("The % increase of sales in the first case:", (np.mean(after_opt) - np.mean(before_opt))/np.mean(before_opt)*100,"%")
+
+before_opt = np.array([230, 210, 190, 240, 350, 170, 180, 240, 330, 270, 210, 230])
+after_opt = np.array([310, 180, 190, 240, 220, 240, 160, 410, 130, 320, 290, 210])
+
+print ("The % increase of sales in the second case:", (np.mean(after_opt) - np.mean(before_opt))/np.mean(before_opt)*100,"%")
+
+
+# **Would business feel comfortable spending millions of dollars if the increase is going to be just 1.75%. Does it make sense? Maybe yes - if margins are thin and any increase is considered good. But if the returns from the price optimization module does not let the company break even, it makes no sense to take that path.**
+
+# > Someone tells you the result is statistically significant. The first question you should ask?
+# 
+# # How large is the effect?
+# 
+# To answer such a question, we will make use of the concept **confidence interval**
+# 
+# In plain english, *confidence interval* is the range of values the measurement metric is going to take. 
+# 
+# An example would be: 90% of the times, the increase in average sales (before and after price optimization) would be within the bucket `3.4 and 6.7` (These numbers are illustrative. We will derive those numbers below)
+# 
+# What is the *hacker's way* of doing it? We will do the following steps:
+# 
+# 1. From actual sales data, we sample the data with repetition (separately for before and after) - sample size will be the same as the original
+# 2. Find the differences between the mean of the two samples.
+# 3. Repeat steps 1 and 2 , say 100,000 times.
+# 4. Sort the differences. For getting 90% interval, take the 5% and 95% number. That range gives you the 90% confidence interval on the mean.
+# 5. This process of generating the samples is called **bootstrapping**
+
+#Load the data
+before_opt = np.array([23, 21, 19, 24, 35, 17, 18, 24, 33, 27, 21, 23])
+after_opt = np.array([31, 28, 19, 24, 32, 27, 16, 41, 23, 32, 29, 33])
+
+#generate a uniform random sample
+random_before_opt = np.random.choice(before_opt, size=before_opt.size, replace=True)
+
+print ("Actual sample before optimization:", before_opt)
+print ("Bootstrapped sample before optimization: ", random_before_opt)
+
+print ("Mean for actual sample:", np.mean(before_opt))
+print ("Mean for bootstrapped sample:", np.mean(random_before_opt))
+
+random_after_opt = np.random.choice(after_opt, size=after_opt.size, replace=True)
+print "Actual sample after optimization:", after_opt
+print "Bootstrapped sample after optimization: ", random_after_opt
+print "Mean for actual sample:", np.mean(after_opt)
+print "Mean for bootstrapped sample:", np.mean(random_after_opt)
+
+print "Difference in means of actual samples:", np.mean(after_opt) - np.mean(before_opt)
+print "Difference in means of bootstrapped samples:", np.mean(random_after_opt) - np.mean(random_before_opt)
+
+#Like always, we will repeat this experiment 100,000 times. 
+
+def bootstrap_experiment(number_of_times):
+    mean_difference = np.empty([number_of_times,1])
+    for times in np.arange(number_of_times):
+        random_before_opt = np.random.choice(before_opt, size=before_opt.size, replace=True)
+        random_after_opt = np.random.choice(after_opt, size=after_opt.size, replace=True)
+        mean_difference[times] = np.mean(random_after_opt) - np.mean(random_before_opt)
+    return mean_difference
+
+mean_difference = bootstrap_experiment(100000)
+sns.distplot(mean_difference, kde=False)
+
+mean_difference = np.sort(mean_difference, axis=0)
+
+mean_difference #Sorted difference
+
+np.percentile(mean_difference, [5,95])
+
+
+# Reiterating what this means: 90% of the times, the mean difference is between the limits as shown above
+
+# **Exercise: Find the 95% percentile for confidence intevals**
+
+
+# ### Where do we go from here? 
+# 
+# First of all there are two points to be made.
+# 
+# 1. Whey do we need signficance testing if confidence intervals can provide us more information?
+# 2. How does it relate to the traditional statistical procedure of finding confidence intervals
+# 
+# For the first one:
+# 
+# What if sales in the first month after price changes was 80 and the month before price changes was 40. The difference is 40. And confidence interval,as explained above, using replacements, would always generate 40. But if we do the significance testing, as detailed above - where the labels are shuffled, the prices are equally likely to occur in both the groups. And so, significance testing would answer that there was no difference. But don't we all know that the data is **too small** to make meaningful inferences?
+# 
+# For the second one:
+# 
+# Traditional statistics derivation assumes normal distribution. But what if the underlying distribution isn't normal? Also, people relate to resampling much better :-) 
+
+
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Basic Metrics
+
+import numpy as np
+import pandas as pd
+from datetime import datetime as dt
+from scipy import stats
+
+
+# ### Read the input datasets. There are three datasets:
+# 
+# 1. Weed price by date / state
+# 2. Demographics of State
+# 3. Population of state
+
+prices_pd = pd.read_csv("../data/Weed_Price.csv", parse_dates=[-1])
+demography_pd = pd.read_csv("../data/Demographics_State.csv")
+population_pd = pd.read_csv("../data/Population_State.csv")
+
+prices_pd.head()
+
+prices_pd.tail()
+
+demography_pd.head()
+
+population_pd.head()
+prices_pd.dtypes
+# #### Sort the data on state and date, then fill NA values
+prices_pd.sort(columns=['State', 'date'], inplace=True)
+prices_pd.fillna(method='ffill', inplace=True)
+# ### Finding mean, median, mode, variance, standard deviation for California
+# #### Mean
+# arithmetic average of a range of values or quantities, computed by dividing the total of all values by the number of values.
+california_pd = prices_pd[prices_pd.State == "California"].copy(True)
+california_pd.head()
+
+ca_sum = california_pd['HighQ'].sum()
+
+ca_count = california_pd['HighQ'].count()
+
+ca_mean = ca_sum / ca_count
+print "Mean weed price in CA is:", ca_mean
+# #### Exercise: Find CA mean for 2013, 2014 & 2015 separately
+# 
+# *Hint:* `california_pd.iloc[0]['date'].year`
+
+# #### Median
+# 
+# Denotes value or quantity lying at the midpoint of a frequency distribution of observed values or quantities, such that there is an equal probability of falling above or below it. Simply put, it is the *middle* value in the list of numbers.
+ca_count
+# If count is odd, the median is the value at (n+1)/2,
+# 
+# else it is the average of n/2 and (n+1)/2
+ca_highq_pd = california_pd.sort(columns=['HighQ'])
+ca_highq_pd.head()
+
+ca_median = ca_highq_pd.HighQ.iloc[(ca_count) / 2]
+print ("Median price of weed in CA is:", ca_median)
+# #### Mode
+# 
+# It is the number which appears most often in a set of numbers. 
+
+ca_mode = ca_highq_pd.HighQ.value_counts().index[0]
+print ("The most common price is CA, as indicated by its mode, is:", ca_mode)
+# #### Variance
+# 
+# > Once two statistician of height 4 feet and 5 feet have to cross a river of AVERAGE depth 3 feet. Meanwhile, a third person comes and said, "what are you waiting for? You can easily cross the river"
+# 
+# It's the average distance of the data values from the *mean*
+california_pd['HighQ_dev'] = (california_pd['HighQ'] - ca_mean) ** 2
+
+ca_HighQ_variance = california_pd.HighQ_dev.sum() / (ca_count - 1)
+print( "Variance of High Quality weed prices in CA is:", ca_HighQ_variance)
+# #### Standard Deviation
+# 
+# It is the square root of variance. This will have the same units as the data and mean. 
+ca_HighQ_SD = np.sqrt(ca_HighQ_variance)
+print ("Standard Deviation of High Quality weed prices in CA is:", ca_HighQ_SD)
+# #### Using Pandas built-in function
+california_pd.describe()
+
+california_pd.HighQ.mode()
+# #### Co-variance 
+# covariance as a measure of the (average) co-variation between two variables, say x and y. Covariance describes both how far the variables are spread out, and the nature of their relationship, Covariance is a measure of how much two variables change together. Compare this to Variance, which is just the range over which one measure (or variable) varies.
+# #### Co-variance of weed price in California vs New York
+ny_pd = prices_pd[prices_pd['State'] == 'New York'].copy(True)
+ny_pd.head()
+
+ny_pd = ny_pd.ix[:,[1,7]]
+ny_pd.columns = ['NY_HighQ', 'date']
+
+ny_pd.head()
+
+ca_ny_pd = pd.merge(california_pd.ix[:,[1,7]].copy(), ny_pd, on="date")
+ca_ny_pd.rename(columns={"HighQ": "CA_HighQ"}, inplace=True)
+ca_ny_pd.head()
+
+ny_mean = ca_ny_pd.NY_HighQ.mean()
+ny_mean
+
+ca_ny_pd['ca_dev'] = ca_ny_pd['CA_HighQ'] - ca_mean
+ca_ny_pd.head()
+
+ca_ny_pd['ny_dev'] = ca_ny_pd['NY_HighQ'] - ny_mean
+ca_ny_pd.head()
+
+ca_ny_cov = (ca_ny_pd['ca_dev'] * ca_ny_pd['ny_dev']).sum() / (ca_count - 1)
+print ("Covariance of the High Quality weed prices in CA and NY is:", ca_ny_cov)
+
+
+# #### Using Pandas built-in function
+ca_ny_pd.cov()
+
+
+# ### Correlation
+# 
+# Extent to which two or more variables fluctuate together. A positive correlation indicates the extent to which those variables increase or decrease in parallel; a negative correlation indicates the extent to which one variable increases as the other decreases.
+
+#
+ca_highq_std = ca_ny_pd.CA_HighQ.std()
+ny_highq_std = ca_ny_pd.NY_HighQ.std()
+
+ca_ny_corr = ca_ny_cov / (ca_highq_std * ny_highq_std)
+print ("Correlation between weed prices in NY and CA:", ca_ny_corr)
+ca_ny_pd.corr()
+# # Correlation != Causation
+# correlation between two variables does not necessarily imply that one causes the other.
+
+
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Distribution
+# > the way in which something is shared out among a group or spread over an area
+# 
+# ### Random Variable
+# > a variable whose value is subject to variations due to chance (i.e. randomness, in a mathematical sense). A random variable can take on a set of possible different values (similarly to other mathematical variables), each with an associated probability [wiki](https://en.wikipedia.org/wiki/Random_variable)
+# 
+# **Types**
+# 
+# 1. Discrete Random Variables <br>
+#     Eg: Genders of the buyers buying shoe
+# 2. Continuous Random Variables <br>
+#     Eg: Shoe Sales in a quarter
+#     
+# ### Probability Distribution
+# > Assigns a probability to each measurable subset of the possible outcomes of a random experiment, survey, or procedure of statistical inference. [wiki](https://en.wikipedia.org/wiki/Probability_distribution)
+# 
+# #### Probability Mass Function
+# probability mass function (pmf) is a function that gives the probability that a discrete random variable is exactly equal to some value
+# 
+# #### Discrete probability distribution(Cumulative Mass Function)
+# probability distribution characterized by a probability mass function
+# 
+# #### Probability Density Function
+# function that describes the relative likelihood for this random variable to take on a given value
+# 
+# #### Continuous probability distribution(Cumulative Density function)
+# probability that the variable takes a value less than or equal to `x`
+# 
+# ### Central Limit Theorem
+# Given certain conditions, the arithmetic mean of a sufficiently large number of iterates of independent random variables, each with a well-defined expected value and well-defined variance, will be approximately normally distributed, regardless of the underlying distribution. [wiki](https://en.wikipedia.org/wiki/Central_limit_theorem)
+# 
+# #### Normal Distribution
+# A bell shaped distribution. It is also called Gaussian distribution
+
+# #### Skewness
+# Measure of the asymmetry of the probability distribution of a real-valued random variable about its mean. [wiki](https://en.wikipedia.org/wiki/Skewness)
+
+# #### Kurtosis
+# Measure of the "peakedness" of the probability distribution of a real-valued random variable [wiki](https://en.wikipedia.org/wiki/Kurtosis)
+
+# #### Binomial Distribution
+# 
+# Binomial distribution with parameters `n` and `p` is the discrete probability distribution of the number of successes in a sequence of n independent yes/no experiments, each of which yields success with probability p. A success/failure experiment is also called a Bernoulli experiment or Bernoulli trial; when n = 1, the binomial distribution is a Bernoulli distribution  [wiki](https://en.wikipedia.org/wiki/Binomial_distribution)
+
+# #### Exponential Distribution
+# Probability distribution that describes the time between events in a Poisson process, i.e. a process in which events occur continuously and independently at a constant average rate. It has the key property of being memoryless. [wiki](https://en.wikipedia.org/wiki/Exponential_distribution)
+
+# #### Uniform distribution
+# All values have the same frequency [wiki](https://en.wikipedia.org/wiki/Uniform_distribution_(continuous))
+# ### Histograms
+# 
+# Most commonly used representation of a distribution.
+# 
+# Let's plot distribution of weed prices for 2014
+
+import pandas as pd
+import seaborn as sns
+sns.set(color_codes=True)
+
+#Import the data
+weed_pd = pd.read_csv("../data/Weed_Price.csv", parse_dates=[-1])
+
+sns.distplot(weed_pd.HighQ, kde=False)
+
+weed_pd["month"] = weed_pd["date"].apply(lambda x: x.month)
+weed_pd["year"] = weed_pd["date"].apply(lambda x: x.year)
+
+weed_jan2015_summarized = weed_pd.loc[(weed_pd.month==1) & (weed_pd.year==2015), ["State", "HighQ"]].groupby("State").mean().reset_index()
+
+weed_jan2015_summarized
+
+# **Question If you'd randomly landed in USA, with equal chances of landing in any of the states, what is the probability that the price of weed is more than 340. (Bin the prices by $10)**
+
+sns.distplot(weed_jan2015_summarized.HighQ, bins=range(0,500,10))
+
+#Using `scipy` to use distribution
+
+from scipy import stats
+import scipy as sp
+import numpy as np
+import matplotlib as mpl
+from matplotlib import pyplot as plt
+
+#Generate random numbers that are normally distributed
+random_normal = sp.randn(100)
+plt.scatter(range(100), random_normal)
+
+print ("mean:", random_normal.mean(), " variance:", random_normal.var())
+#Create a normal distribution with mean 2.5 and standard deviation 1.7
+n = stats.norm(loc=2.5, scale=1.7)
+
+#Generate random number from that distribution
+n.rvs()
+
+#for the above normal distribution, what is the pdf at 0.3?
+n.pdf(0.3)
+
+#Binomial distribution with `p` = 0.4 and number of trials as 15
+stats.binom.pmf(range(15), 10, 0.4)
+# ### Standard Error
+# 
+# It is a measure of how far the estimate to be off, on average. More technically, it is the standard deviation of the sampling distribution of a statistic(mostly the mean). Please do not confuse it with *standard deviation*. Standard deviation is a measure of the variability of the observed quantity. Standard error, on the other hand, describes variability of the estimate. 
+# 
+# To illustrate this, let's do the following.
+# 
+# Not everyone buying weed reports it on the site. Let's assume that the actual mean price for that month was 243.7. Compute standard deviation and standard error for the mean. 
+
+#Weed prices of Calinfornia for the month of Jan 2015
+weed_ca_jan2015 = weed_pd[(weed_pd.State=="California") & (weed_pd.month==1) & (weed_pd.year==2015)]
+weed_ca_jan2015.head()
+
+#Mean and standard deviation of the price of high quality weed in California
+print ("Sample Mean:", weed_ca_jan2015.HighQ.mean(), "\n", "Sample Standard Deviation:", weed_ca_jan2015.HighQ.std())
+
+print (weed_ca_jan2015.HighQ.max(), weed_ca_jan2015.HighQ.min()))
+# We'll follow the same procedures we did in the `resampling.ipynb`.  We will bootstrap samples from actual observed data 10,000 times and compute difference between sample mean and actual mean. Find root mean squared error to get standard error
+
+def squared_error(bootstrap_sample, actual_mean):
+    return np.square(bootstrap_sample.mean() - actual_mean)
+
+def experiment_for_computing_standard_error(observed_prices, number_of_times, actual_mean):
+    bootstrap_mean = np.empty([number_of_times, 1], dtype=np.int32)
+    bootstrap_sample = np.random.choice(observed_prices, size=[observed_prices.size, number_of_times], replace=True)
+    bootstrap_squared_error = np.apply_along_axis(squared_error, 1, bootstrap_sample, actual_mean)
+    return np.sqrt(bootstrap_squared_error.mean())
+
+#Standard error of the estimate for mean
+experiment_for_computing_standard_error(np.array(weed_ca_jan2015.HighQ), 10, 243.7)
+
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Hypothesis Testing
+
+# We would like to know if the effects we see in the sample(observed data) are likely to occur in the population. 
+# 
+# The way classical hypothesis testing works is by conducting a statistical test to answer the following question:
+# > Given the sample and an effect, what is the probability of seeing that effect just by chance?
+# 
+# Here are the steps on how we would do this
+# 
+# 1. Compute test statistic
+# 2. Define null hypothesis
+# 3. Compute p-value
+# 4. Interpret the result
+# 
+# If p-value is very low(most often than now, below 0.05), the effect is considered statistically significant. That means that effect is unlikely to have occured by chance. The inference? The effect is likely to be seen in the population too. 
+# 
+# This process is very similar to the *proof by contradiction* paradigm. We first assume that the effect is false. That's the null hypothesis. Next step is to compute the probability of obtaining that effect (the p-value). If p-value is very low(<0.05 as a rule of thumb), we reject the null hypothesis. 
+import numpy as np
+import pandas as pd
+from scipy import stats
+import matplotlib as mpl
+get_ipython().run_line_magic('matplotlib', 'inline')
+
+import seaborn as sns
+sns.set(color_codes=True)
+
+weed_pd = pd.read_csv("D:/Sridharan/CAIA-Allcode/Intro_statistics/intro2stats-master/data/Weed_Price.csv", parse_dates=[-1])
+
+weed_pd["month"] = weed_pd.date.apply(lambda x: x.month)
+weed_pd["year"] = weed_pd.date.apply(lambda x: x.year)
+
+weed_pd.head()
+
+
+# ### Let's work on weed prices in California in 2014
+
+weed_ca_2014 = weed_pd[(weed_pd.State=="California") & (weed_pd.year==2014)]
+
+#Mean and standard deviation of high quality weed's price
+print ("Mean:", weed_ca_2014.HighQ.mean())
+print ("Standard Deviation:", weed_ca_2014.HighQ.std())
+
+#Confidence interval on the mean
+stats.norm.interval(0.95, loc=weed_ca_2014.HighQ.mean(), scale = weed_ca_2014.HighQ.std()/np.sqrt(len(weed_ca_2014)))
+# ### Question: Are high-quality weed prices in Jan 2014 significantly higher than in Jan 2015?
+
+#Get the data
+weed_ca_jan2014 = np.array(weed_pd[(weed_pd.State=="California") & (weed_pd.year==2014) & (weed_pd.month==1)].HighQ)
+weed_ca_jan2015 = np.array(weed_pd[(weed_pd.State=="California") & (weed_pd.year==2015) & (weed_pd.month==1)].HighQ)
+
+print ("Mean-2014 Jan:", weed_ca_jan2014.mean())
+print ("Mean-2015 Jan:", weed_ca_jan2015.mean())
+print ("Effect size:", weed_ca_jan2014.mean() - weed_ca_jan2015.mean())
+# **Null Hypothesis**: Mean prices aren't significantly different
+# Perform **t-test** and determine the p-value. 
+
+stats.ttest_ind(weed_ca_jan2014, weed_ca_jan2015, equal_var=True)
+# p-value is the probability that the effective size was by chance. And here, p-value is almost 0.
+# *Conclusion*: The price difference is significant. But is a price increase of $4.85 a big deal? The price decreased in 2015 by almost 2%. Always remember to look at effect size. 
+# **Problem** Determine if prices of medium quality weed for Jan 2015 and Feb 2015 are significantly different for New York. 
+# ### Assumption of t-test
+# One assumption is that the data used came from a normal distribution. 
+# There's a [Shapiro-Wilk test](https://en.wikipedia.org/wiki/Shapiro-Wilk) to test for normality. If p-value is less than 0.05, then there's a low chance that the distribution is normal.
+stats.shapiro(weed_ca_jan2015)
+stats.shapiro(weed_ca_jan2014)
+#We seem to be good.
+# ### A/B testing
+# 
+# Comparing two versions to check which one performs better. Eg: Show to people two variants for the same webpage that they want to see and find which one provides better conversion rate (or the relevant metric). [wiki](https://en.wikipedia.org/wiki/A/B_testing)
+
+# **Exercise: Impact of regulation and deregulation.**
+# 
+# Information on regulation of Weed in the US by State [wiki](Impact of regulation and deregulation on a couple of states )
+# 
+# 1. Alaska legalized it on 4th Nov 2014. Find if prices significantly changed in Dec 2014 compared to Oct 2014. 
+# 2. Maryland decriminalized possessing weed from Oct 1, 2014. Find if prices of weed changed significantly in Oct 2014 compared to Sep 2014
+
+#  Something to think about: Which of these give smaller p-values ? 
+#    
+#    * Smaller effect size
+#    * Smaller standard error
+#    * Smaller sample size
+#    * Higher variance
+#    
+#    **Answer:** 
+
+# ### Chi-square tests
+
+# Chi-Square tests are used when the data are frequencies, rather than numerical score/price.
+# 
+# The following two tests make use of chi-square statistic
+# 
+# 1. chi-square test for goodness of fit
+# 2. chi-square test for independence
+# 
+# Chi-square test is a non-parametric test. They do not require assumptions about population parameters and they do not test hypotheses about population parameters.
+#  Chi-Square test for goodness fit 
+# $$ \chi^2 = \sum (O - E)^2/E $$
+# 
+# * O is observed frequency
+# * E is expected frequency
+# * $ \chi $ is the chi-square statistic
+# Let's assume the proportion of people who bought High, Medium and Low quality weed in Jan-2014 as the expected proportion. Find if proportion of people who bought weed in Jan 2015 conformed to the norm
+
+weed_jan2014 = weed_pd[(weed_pd.year==2014) & (weed_pd.month==1)][["HighQN", "MedQN", "LowQN"]]
+weed_jan2015 = weed_pd[(weed_pd.year==2015) & (weed_pd.month==1)][["HighQN", "MedQN", "LowQN"]]
+Expected = np.array(weed_jan2014.apply(sum, axis=0))
+Observed = np.array(weed_jan2015.apply(sum, axis=0))
+
+print ("Expected:", Expected, "\n" , "Observed:", Observed)
+
+print ("Expected:", Expected/np.sum(Expected.astype(float)), "\n" , "Observed:", Observed/np.sum(Observed.astype(float)))
+stats.chisquare(Observed, Expected)
+# *Inference* : We reject null hypothesis. The proportions in Jan 2015 is different than what was expected.
+
+############################################################Central limit theorem ######################################################
+
+
+%matplotlib inline
+from __future__ import division      
+import numpy as np
+import scipy.stats as stats     # for pdfs 
+import matplotlib.pyplot as plt
+# hist a set of random numbers, Gaussian distributed
+import numpy as np
+import matplotlib.pyplot as plt
+
+'''  #this is illustration of gausian distribution
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+
+N = 10000000
+x = np.random.random(N)
+ax1.hist(x, 100, normed=True, color='#A60628', alpha=0.4);
+
+x = np.random.randn(N)
+ax2.hist(x ,100, normed=True, color='#348ABD', alpha=0.4);
+
+plt.suptitle("Histogram of random numbers drawn from uniform and Gaussian distribution",fontsize=20);
+plt.show()''''
+
+f = plt.figure(figsize=(18, 10))
+ 
+def plotHist(nr, N, n_, mean, var0, x0):
+    ''' plots the RVs'''
+    x = np.zeros((N))
+    sp = f.add_subplot(3, 2, n_ )
+    
+    for i in range(N):    
+        for j in range(nr):
+            x[i] += np.random.random() 
+        x[i] *= 1/nr
+    plt.hist(x, 100, normed=True, color='#348ABD', label=" %d RVs"%(nr));
+    plt.setp(sp.get_yticklabels(), visible=False)
+    
+    variance = var0/nr                     
+    fac = 1/np.sqrt(2*np.pi*variance)
+    dist = fac*np.exp(-(x0-mean)**2/(2*variance))
+    plt.plot(x0,dist,color='#A60628',linewidth=3,label='CLT',alpha=0.8)
+    plt.xlabel('r')
+    plt.xlim([0, 1])
+    leg = plt.legend(loc="upper left")
+    leg.get_frame().set_alpha(0.1)
+
+    
+N = 1000000   # number of samples taken
+nr = ([1, 2, 4, 8, 16, 32])
+
+mean, var0 = 0.5, 1.0/12  # mean and variance of uniform distribution in range 0, 1
+x0 = np.linspace(0, 1, 128)
+
+for i in range(np.size(nr)):
+    plotHist(nr[i], N, i+1, mean, var0, x0)
+
+plt.suptitle("Addition of uniform random variables (RVs) converge to a Gaussian distribution (CLT)",fontsize=20);
+plt.show()
+
+
+
+####################################confidence interval##################################################
+####simulate population dataset
+np.random.seed(10)
+population_ages1 = stats.poisson.rvs(loc=18, mu=35, size=150000)
+population_ages2 = stats.poisson.rvs(loc=18, mu=10, size=100000)
+population_ages = np.concatenate((population_ages1, population_ages2))
+
+population_ages.mean()
+
+
+import math
+
+np.random.seed(12)
+
+sample_size = 1000
+
+intervals = []
+sample_means = []
+
+for sample in range(25):
+    sample = np.random.choice(a= population_ages, size = sample_size)
+    sample_mean = sample.mean()
+    sample_means.append(sample_mean)
+
+    z_critical = stats.norm.ppf(q = 0.975)  # Get the z-critical value*         
+
+    pop_stdev = population_ages.std()  # Get the population standard deviation
+
+    stats.norm.ppf(q = 0.025)
+
+    margin_of_error = z_critical * (pop_stdev/math.sqrt(sample_size))
+
+    confidence_interval = (sample_mean - margin_of_error,
+                           sample_mean + margin_of_error)  
+    
+    intervals.append(confidence_interval)
+
+
+
+#plot the graph
+plt.figure(figsize=(9,9))
+
+plt.errorbar(x=np.arange(0.1, 25, 1), 
+             y=sample_means, 
+             yerr=[(top-bot)/2 for top,bot in intervals],
+             fmt='o')
+
+plt.hlines(xmin=0, xmax=25,
+           y=43.0023, 
+           linewidth=2.0,
+           color="red")
+
+plt.show()
+##################################################
