@@ -1,0 +1,483 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Aug 16 12:15:12 2019
+
+@author: Training89
+"""
+
+# Project Facebook Comments 
+
+#packages import
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn import metrics
+
+#data load
+df=pd.read_csv(r'C:\Users\Training89\Documents\Dataset.csv')
+df.head()
+df.info()
+
+list(set(df.dtypes.tolist()))
+df_num = df.select_dtypes(include = ['float64', 'int64'])
+df_num.head()
+df_num.hist(figsize=(16, 20), bins=50, xlabelsize=8, ylabelsize=8); # ; avoid having the matplotlib verbose informations
+
+
+df_num_corr = df_num.corr()['output'][:-1] # -1 because the latest row is SalePrice
+golden_features_list = df_num_corr[abs(df_num_corr) > 0.5].sort_values(ascending=False)
+print("There is {} strongly correlated values with Output:\n{}".format(len(golden_features_list), golden_features_list))
+
+
+# Feature to Feature Correation 
+
+corr = df_num.drop('output', axis=1).corr() # We already examined SalePrice correlations
+plt.figure(figsize=(12, 10))
+
+sns.heatmap(corr[(corr >= 0.5) | (corr <= -0.4)], 
+            cmap='viridis', vmax=1.0, vmin=-1.0, linewidths=0.1,
+            annot=True, annot_kws={"size": 8}, square=True);
+
+                 
+fig, axes = plt.subplots(round(len(df_num.columns) / 3), 3, figsize=(12, 30))
+
+for i, ax in enumerate(fig.axes):
+    if i < len(df_num.columns):
+        ax.set_xticklabels(ax.xaxis.get_majorticklabels(), rotation=45)
+        sns.countplot(x=df_num.columns[i], alpha=0.7, data=df_num, ax=ax)
+
+fig.tight_layout()
+                 
+                 
+                 
+                 
+features_to_analyse = [x for x in quantitative_features_list if x in golden_features_list]
+features_to_analyse.append('output')
+features_to_analyse                 
+fig, ax = plt.subplots(round(len(features_to_analyse) / 3), 3, figsize = (18, 12))
+
+for i, ax in enumerate(fig.axes):
+    if i < len(features_to_analyse) - 1:
+        sns.regplot(x=features_to_analyse[i],y='output', data=df[features_to_analyse], ax=ax)                 
+                 
+                 
+df['likes'].describe()
+df['Category'].value_counts()
+df['Checkins'].value_counts()
+df['likes'].value_counts()
+plt.figure(figsize=(12,10))
+sns.heatmap(df.corr(),cmap='viridis',annot=True,cbar=False)
+sns.distplot(df['likes'],bins=20)
+plt.title("Distribution of Total Page Likes")
+
+plt.figure(figsize=(14,8))
+sns.distplot(df[df['likes']<1000]['likes'],bins=20,color='dodgerblue',hist_kws={'alpha':0.6})
+plt.xlim(0,1000)
+plt.xlabel("# of Likes",fontsize=15)
+plt.ylabel('Frequency',fontsize=15)
+plt.title('Distribution of Like/Post',fontsize=20)
+
+
+sns.countplot(df['Category'],palette='viridis')
+
+
+#Finding the Percentage missing data along with the values
+total = df.isnull().sum().sort_values(ascending=False)
+percent = (df.isnull().sum()/df.isnull().count()).sort_values(ascending=False)
+missing_data = pd.concat([total, percent], axis=1, keys=['Total', 'Percent'])
+print(missing_data)
+#Null Replace - Removing Null with mode/ medain depedning on the data 
+# Imputation of the data by replacing it with mean or mode etc
+def null_impute(df):
+    for cols in list(df.columns.values):
+        if df[cols].isnull().sum() == 0:
+            df[cols] = df[cols]
+        elif df[cols].dtypes == 'float64' or df[cols].dtypes == 'int64':
+            df[cols] = df[cols].fillna(df[cols].mean())
+        else:
+            df[cols] = df[cols].fillna(df[cols].mode()[0])
+            
+null_impute(df)
+# Null removed in the dataset
+df.isnull().sum()
+df.isnull().sum().max()
+
+import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+vif = pd.DataFrame()
+vif["VIF Factor"] = [variance_inflation_factor(df.values, i) for i in range(df.shape[1])]
+vif["features"] = df.columns
+df['comm24'].unique()
+df['Category'].mean()
+import seaborn as sns
+print(df.corr())
+sns.heatmap(df.corr())
+df.plot(kind='scatter', x='comm24', y='output')
+calculate_vif_(df)
+vif
+xx=df.iloc[:,:-1]
+yy=df.iloc[:,-1]
+from sklearn.cross_validation import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(xx, yy, test_size = 0.2, random_state = 0)
+x_train
+from sklearn.linear_model import LinearRegression
+regressor = LinearRegression()
+reg=regressor.fit(x_train, y_train)
+print('coefficient values',regressor.coef_)
+print('intercept value',regressor.intercept_)
+y_pred = regressor.predict(x_test)
+y_pred=pd.DataFrame(y_pred)
+import statsmodels.formula.api as sm
+model = sm.ols(formula='output~hrs+commBase+Category',data=dataset)
+fitted = model.fit()
+from sklearn import metrics
+import numpy as np
+print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred)) 
+print('Mean Squared Error:', metrics.mean_squared_error(y_test, y_pred))  
+print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred))) 
+#print(fitted.summary())
+print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred)) 
+import statsmodels.formula.api as sm
+model = sm.ols(formula='output~likes',data=df)
+fitted = model.fit()
+from sklearn.feature_selection import RFE
+rfe = RFE(regressor, 10)
+rfe = rfe.fit(x_train,y_train)
+# summarize the selection of the attributes
+print(rfe.support_)
+print(rfe.ranking_)
+from sklearn.ensemble import ExtraTreesClassifier
+regressor = ExtraTreesClassifier()
+regressor.fit(x_train,y_train)
+# display the relative importance of each attribute
+print(regressor.feature_importances_)
+df
+
+===================================================================================================================================
+
+
+
+import pandas as pd
+from IPython.display import display
+pd.options.display.max_columns=None
+
+
+# In[3]:
+
+
+dataset=pd.read_csv(r'C:\Users\Training76\Desktop\dataset.csv)
+
+
+# In[4]:
+
+
+dataset
+
+
+# In[5]:
+
+
+dataset.isnull().sum()
+
+
+# In[17]:
+
+
+import sqlalchemy
+import urllib
+conn = urllib.parse.quote_plus('Driver={SQL Server Native Client 11.0};'
+                      'Server=ssintr02;'
+                      'Database=T5_KarthickSha;'
+                      'uid=T5_KarthickSha;'
+                      'pwd=dravid@123;')
+engine=sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect={}'.format(conn))
+
+
+# In[7]:
+
+
+dataset.to_sql('python_dataset', con=engine, if_exists='append')
+
+
+# In[8]:
+
+
+dataset.head()
+
+
+# In[46]:
+
+
+dataset.describe()
+
+
+# In[12]:
+
+
+from patsy import dmatrices
+features = "+".join(dataset.columns - ["output"])
+y, x = dmatrices('output' + features, dataset, return_type='dataframe')
+
+
+# In[9]:
+
+
+import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+vif = pd.DataFrame()
+vif["VIF Factor"] = [variance_inflation_factor(dataset.values, i) for i in range(dataset.shape[1])]
+vif["features"] = dataset.columns
+
+
+# In[52]:
+
+
+dataset['comm24'].unique()
+
+
+# In[15]:
+
+
+dataset['Category'].mean()
+
+
+# In[158]:
+
+
+datasetnew=pd.read_sql('select * from pss_dataset', con=engine)
+
+
+# In[163]:
+
+
+datasetnew.to_csv('datasetnew.csv')
+
+
+# In[23]:
+
+
+df.isnull().sum()
+
+
+# In[55]:
+
+
+del df['index']
+
+
+# In[35]:
+
+
+get_ipython().magic('matplotlib inline')
+
+
+# In[59]:
+
+
+import seaborn as sns
+print(df.corr())
+sns.heatmap(df.corr())
+
+
+# In[58]:
+
+
+df.plot(kind='scatter', x='comm24', y='output')
+
+
+# In[76]:
+
+
+calculate_vif_(df)
+
+
+# In[77]:
+
+
+features = "+".join(df.columns - ["output"])
+
+
+# In[113]:
+
+
+vif = pd.DataFrame()
+vif["VIF Factor"] = [variance_inflation_factor(x.values, i) for i in range(x.shape[1])]
+vif["features"] = x.columns
+
+
+# In[114]:
+
+
+vif
+
+
+# In[110]:
+
+
+x=df
+
+
+# In[111]:
+
+
+from sklearn.preprocessing import StandardScaler
+sc = StandardScaler()
+x.iloc[:,:] = sc.fit_transform(x)
+
+
+# In[112]:
+
+
+x
+
+
+# In[85]:
+
+
+df.corr()
+sns.heatmap(df.corr())
+
+
+# In[101]:
+
+
+df['sun_pub']=df['sun_pub'].astype('category')
+
+
+# In[103]:
+
+
+df.dtypes
+
+
+# In[102]:
+
+
+vif
+
+
+# In[94]:
+
+
+df.corr()
+
+
+# In[98]:
+
+
+corr=df.corr()
+sns.heatmap(corr[(corr>=0.1) | (corr<=-0.4)],
+            cmap='viridis',vmax=54.0,vmin=-5.0,linewidths=0.5,
+            annot=True,annot_kws={"size":10},square=True);
+
+
+# In[117]:
+
+
+xx=x.iloc[:,:-1]
+yy=x.iloc[:,-1]
+
+
+# In[116]:
+
+
+xx
+
+
+# In[118]:
+
+
+from sklearn.cross_validation import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(xx, yy, test_size = 0.2, random_state = 0)
+
+
+# In[129]:
+
+
+x_train
+
+
+# In[120]:
+
+
+from sklearn.linear_model import LinearRegression
+regressor = LinearRegression()
+reg=regressor.fit(x_train, y_train)
+
+
+# In[121]:
+
+
+print('coefficient values',regressor.coef_)
+print('intercept value',regressor.intercept_)
+
+
+# In[122]:
+
+
+y_pred = regressor.predict(x_test)
+y_pred=pd.DataFrame(y_pred)
+
+
+# In[144]:
+
+
+import statsmodels.formula.api as sm
+model = sm.ols(formula='output~hrs+commBase+Category',data=dataset)
+fitted = model.fit()
+
+
+# In[146]:
+
+
+from sklearn import metrics
+import numpy as np
+print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred)) 
+print('Mean Squared Error:', metrics.mean_squared_error(y_test, y_pred))  
+print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred))) 
+print(fitted.summary())
+
+
+# In[140]:
+
+
+print('Mean Absolute Error:', metrics.mean_absolute_error(y_test, y_pred)) 
+
+
+# In[131]:
+
+
+import statsmodels.formula.api as sm
+model = sm.ols(formula='outpur~likes',data=df)
+fitted = model.fit()
+
+
+# In[166]:
+
+
+from sklearn.feature_selection import RFE
+rfe = RFE(regressor, 10)
+rfe = rfe.fit(x_train,y_train)
+# summarize the selection of the attributes
+print(rfe.support_)
+print(rfe.ranking_)
+
+
+# In[171]:
+
+
+from sklearn.ensemble import ExtraTreesClassifier
+regressor = ExtraTreesClassifier()
+regressor.fit(x_train,y_train)
+# display the relative importance of each attribute
+print(regressor.feature_importances_)
+
+
+# In[149]:
+
+
+df
+
