@@ -1,0 +1,281 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Aug 20 23:14:28 2019
+
+@author: PADMANABH BOSAMIA
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+df = pd.read_excel(r"C:\Users\PADMANABH BOSAMIA\Documents\Facebook_Python\Facebook_Excel.xls",delimiter=',')
+df.info():
+df.head(3)
+df['likes'].describe()
+df['Category'].value_counts()
+##EDA
+df['Category'] = df['Category'].apply(lambda x: str(x))
+plotdf = df.drop(df.columns[:15],axis =1)
+sns.pairplot(data=plotdf)
+plt.figure(figsize=(12,10))
+sns.heatmap(df.corr(),cmap='viridis',annot=True,cbar=False)
+Univariate- Page Likes and Category 
+sns.distplot(df['likes'],bins=20)
+plt.title("Distribution of Total Page Likes")
+plt.figure(figsize=(14,8))
+sns.distplot(df[df['likes']<1000]['likes'],bins=20,color='dodgerblue',hist_kws={'alpha':0.6})
+plt.xlim(0,1000)
+plt.xlabel("# of Likes",fontsize=15)
+plt.ylabel('Frequency',fontsize=15)
+plt.title('Distribution of Likes',fontsize=20)
+sns.countplot(df['Category'],palette='viridis')f, ax = plt.subplots()
+
+
+
+
+sns.countplot(df['Post Weekday'],palette='viridis')
+handles = ["sun_pub", "mon_pub", "tue_pub", "wed_pub", "thu_pub", "fri_pub",'sat_pub']
+labels = [0,1,2,3,4,5,6]
+plt.xticks(labels, handles)
+ax.set_ylabel("Frequency")
+sns.despine(offset = 5, trim = True)
+plt.title("Frequency of Posts by Weekday")
+sns.countplot(df['Returns'],palette='viridis')
+from collections import OrderedDict
+sns.set_style("whitegrid")
+
+
+sns.set_style("whitegrid")
+
+f, ax = plt.subplots()
+sns.countplot(df['baseTime'],palette='viridis',)
+#handles = ["Su", "M", "Tu", "W", "Th", "F",'Sa']
+#labels = [0,1,2,3,4,5,6]
+#plt.xticks(labels, handles)
+ax.set_ylabel("Frequency")
+sns.despine(offset = 5, trim = True)
+plt.title("Frequency of Posts by Hour")
+
+## Trying to create 1 variable which combines all the days and takes it as weekday
+df['Weekday'] = df.sun_pub.astype(str).str.cat(df.mon_pub.astype(str))
+del df['Weekday']
+
+plt.figure(figsize=(8,6))
+sns.boxplot(x='Category',y='likes',data=df,palette='viridis')
+plt.ylim(0,750)
+plt.title("Distribution of Likes/Category Posted")
+plt.ylabel("# of Likes")
+           
+plt.figure(figsize=(8,6))
+sns.boxplot(x='baseTime',y='likes',data=df,palette='viridis')
+plt.ylim(0,750)
+plt.title("Distribution of Post Likes by Hour Posted")
+plt.ylabel("# of Likes")
+           
+from sklearn import linear_model
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
+from sklearn.preprocessing import StandardScaler
+
+outlierCut = np.percentile(df['likes'],90)
+outlierCut           
+df = df[df['likes']<outlierCut]
+
+# Removing Null Values in the dataset
+
+def null_impute(df):
+
+    for cols in list(df.columns.values):
+
+        if df[cols].isnull().sum() == 0:
+
+            df[cols] = df[cols]
+
+        elif df[cols].dtypes == 'float64' or df[cols].dtypes == 'int64':
+
+            df[cols] = df[cols].fillna(df[cols].mean())
+
+        else:
+
+            df[cols] = df[cols].fillna(df[cols].mode()[0])
+
+            
+
+null_impute(df)
+
+
+# splitting of columns for linear regression
+df.columns
+x = df[['likes', 'Checkins', 'Returns', 'Category', 'commBase', 'comm24',
+       'comm48', 'comm24_1', 'diff_24,48', 'baseTime', 'length', 'shares',
+       'hrs', 'sun_pub', 'mon_pub', 'tue_pub', 'wed_pub', 'thu_pub', 'fri_pub',
+       'sat_pub', 'sun_base', 'mon_base', 'tue_base', 'wed_base', 'thu_base',
+       'fri_base', 'sat_base']]
+y = df['output']
+
+x_train,x_test,y_train, y_test = train_test_split(x,
+                                                  y, test_size=0.1,
+                                                  random_state=42)
+y_test.count()
+# Linear and Lasso Regression 
+reg = linear_model.LinearRegression(normalize=True)
+lasso = linear_model.Lasso(normalize=True)
+reg.fit(x_train,y_train)
+lasso.fit(x_train,y_train)
+reg.coef_
+lasso.coef_
+# Model Validation 
+pred = reg.predict(x_test)
+pred_train = reg.predict(x_train)
+
+lpred = lasso.predict(x_test)
+lpred_train = lasso.predict(x_train)
+
+LRerror = y_test - pred
+plt.scatter(y_test, LRerror)
+
+LSerror = y_test - lpred
+plt.scatter(y_test, LSerror)
+plt.ylim(-400,400)
+plt.xlim(0,450)
+
+
+testScore = r2_score(y_pred=pred,y_true=y_test)
+trainScore = r2_score(y_pred=pred_train,y_true=y_train)
+
+ltestScore = r2_score(y_pred=lpred,y_true=y_test)
+ltrainScore = r2_score(y_pred=lpred_train,y_true=y_train)
+
+lrResults = pd.DataFrame()
+lrResults['Score'] = [trainScore,testScore]
+lrResults['Step'] = ['train','test']
+
+lrResults
+
+lassoResults = pd.DataFrame()
+lassoResults['Score'] = [ltrainScore,ltestScore]
+lassoResults['Step'] = ['train','test']
+
+lassoResults
+
+
+sns.pointplot(y=lrResults['Score'],x=lrResults['Step'])
+plt.ylim([-.1,1])
+plt.title('R^2 Scores')
+plt.savefig('LRScores.png',bbox_inches='tight')
+
+
+#The linear regression model performed poorly overall.
+#Slight overfitting: the R2 value fell .05 points from train to test
+#Weak predictive power: .207 R2 train, .154 in test
+#I had to tune the test set to 10% of the total dataset, to get the highest R2 value in the test set.
+# Random Forest Regression 
+from sklearn.ensemble import RandomForestRegressor
+x_train,x_test,y_train, y_test = train_test_split(x,
+                                                  y, test_size=0.4,
+                                                  random_state=42)
+rf = RandomForestRegressor(n_estimators=500,min_samples_split=10)
+rf.fit(x_train,y_train)
+# Model Validation 
+from sklearn.metrics import r2_score
+from scipy.stats import spearmanr, pearsonr
+predicted_train = rf.predict(x_train)
+predicted_test = rf.predict(x_test)
+test_score = r2_score(y_test, predicted_test)
+spearman = spearmanr(y_test, predicted_test)
+pearson = pearsonr(y_test, predicted_test)
+
+print('Test data R-2 score: {}').format(test_score)
+print('Test data Spearman correlation: {}').spearman[0]
+print('Test data Pearson correlation: {}').pearson[0]
+
+train_score = r2_score(y_train, predicted_train)
+spearmanTrain = spearmanr(y_train, predicted_train)
+pearsonTrain = pearsonr(y_train, predicted_train)
+
+print(' ')
+
+print('Train data R-2 score: {}').format(train_score)
+print('Train data Spearman correlation: {}').format(spearmanTrain[0])
+print('Train data Pearson correlation: {}').format(pearsonTrain[0])
+
+RFperf = pd.DataFrame()
+RFperf['Score'] = [round(train_score,3),round(test_score,3)]
+RFperf['Step'] = ['train','test']
+RFperf
+
+sns.pointplot(y=RFperf['Score'],x=RFperf['Step'],color='Red')
+plt.ylim([-.1,1])
+plt.title('R^2 Scores')
+plt.savefig('RFScores.png',bbox_inches='tight')
+
+#Train/test split of 0.4
+#We had solid performance in the test set, with:
+#- .623 R^2 value
+#- .861 Spearman Correlation
+
+#But the model fell apart when using the test set, showing clear signs of overfitting:
+#- .129 R^2 value
+#- .398 Spearman Correlation
+
+# Feature Importance
+
+predicted_test = rf.predict(x_test)
+
+fI = pd.DataFrame()
+fI['Variable'] = list(x_train.columns)
+fI['Importance'] = rf.feature_importances_
+fI.sort_values(by='Importance',ascending=False)[0:15]
+topVars= list(fI.sort_values(by='Importance',ascending=False)[0:15]['Variable'])
+topVars
+# Improving by fitting top variables
+x = df[topVars]
+x_train,x_test,y_train, y_test = train_test_split(x,
+                                                  y, test_size=0.3,
+                                                  random_state=50)
+rf = RandomForestRegressor(n_estimators=500,min_samples_split=15)
+rf.fit(x_train,y_train)
+
+from sklearn.metrics import r2_score
+from scipy.stats import spearmanr, pearsonr
+predicted_train = rf.predict(x_train)
+predicted_test = rf.predict(x_test)
+test_score = r2_score(y_test, predicted_test)
+spearman = spearmanr(y_test, predicted_test)
+pearson = pearsonr(y_test, predicted_test)
+
+#print(f'Out-of-bag R-2 score estimate: {rf.oob_score_:>5.3}')
+print('Test data R-2 score: {}').format(test_score)
+print('Test data Spearman correlation: {}').format(spearman[0])
+print('Test data Pearson correlation: {}').format(pearson[0])
+
+train_score = r2_score(y_train, predicted_train)
+spearmanTrain = spearmanr(y_train, predicted_train)
+pearsonTrain = pearsonr(y_train, predicted_train)
+
+print(' ')
+
+#print(f'Out-of-bag R-2 score estimate: {rf.oob_score_:>5.3}')
+print('Train data R-2 score: {}').format(train_score)
+print('Train data Spearman correlation: {}').format(spearmanTrain[0])
+print('Train data Pearson correlation: {}').format(pearsonTrain[0])
+
+#The model performed substantially worse when taking the top 15 features by importance from the old model.
+
+#Modeling Conclusion
+#After iterating through a random forest using the most important variables and seeing no improvement, this suggests that the data here is not rich enough to sufficiently predict likes based only on the information here.
+
+#Takeaways
+#Paid posts on average have higher engagement 
+#Paid Status/Photo and Category 1 and 2 posts have the highest improvement so
+#more paid posts of these types
+#Video Posts have the highest average engagement, and its not close 
+#more Video posts
+#Posting Monday in the mid-morning and Wednesday in the early morning 
+#Identify and post during times of high engagement
+#Place importance on increasing Page Likes 
+#higher probability that a post has “high” engagement Need a richer dataset to predict accurately
+#identify potentially useful data points and collect them       
